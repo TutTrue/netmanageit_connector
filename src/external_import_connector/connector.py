@@ -178,10 +178,9 @@ class ConnectorTemplate:
                 observable_count += 1
                 
                 # Send in batches of 100
-                if len(stix_objects) >= 10:
+                if len(stix_objects) >= 100:
                     self._send_stix_batch(stix_objects)
                     stix_objects = []
-                    break
         
         # Send remaining observables
         if stix_objects:
@@ -258,10 +257,9 @@ class ConnectorTemplate:
                             )
                 
                 # Send in batches of 100
-                if len(stix_objects) >= 10:
+                if len(stix_objects) >= 100:
                     self._send_stix_batch(stix_objects)
                     stix_objects = []
-                    break
         
         # Send remaining indicators and relationships
         if stix_objects:
