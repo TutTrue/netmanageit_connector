@@ -57,6 +57,7 @@ class OpenCTISTIXConverter:
                 return stix2.IPv4Address(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -72,6 +73,7 @@ class OpenCTISTIXConverter:
                 return stix2.IPv6Address(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -87,6 +89,7 @@ class OpenCTISTIXConverter:
                 return stix2.DomainName(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -102,6 +105,7 @@ class OpenCTISTIXConverter:
                 return stix2.URL(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -117,6 +121,7 @@ class OpenCTISTIXConverter:
                 return stix2.EmailAddress(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -132,6 +137,7 @@ class OpenCTISTIXConverter:
                 return stix2.MACAddress(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -148,6 +154,7 @@ class OpenCTISTIXConverter:
                     id=stix_id,
                     number=observable_data.get("number", 0),
                     name=observable_value,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -164,6 +171,7 @@ class OpenCTISTIXConverter:
                     id=stix_id,
                     pid=observable_data.get("pid"),
                     command_line=observable_data.get("command_line"),
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -181,6 +189,7 @@ class OpenCTISTIXConverter:
                     user_id=observable_data.get("account_login", observable_value),
                     account_login=observable_data.get("account_login"),
                     display_name=observable_data.get("display_name"),
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -199,6 +208,7 @@ class OpenCTISTIXConverter:
                 return stix2.Artifact(
                     id=stix_id,
                     payload_bin=payload_bin,
+                    object_marking_refs=marking_defs if marking_defs else [],
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
@@ -277,6 +287,7 @@ class OpenCTISTIXConverter:
                 external_references=external_refs if external_refs else [],
                 labels=labels if labels else [],
                 kill_chain_phases=kill_chain_phases if kill_chain_phases else [],
+                object_marking_refs=marking_defs if marking_defs else [],
                 custom_properties={
                     "x_opencti_score": indicator_data.get("x_opencti_score"),
                     "x_opencti_detection": indicator_data.get("x_opencti_detection"),
