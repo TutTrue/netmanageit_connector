@@ -193,6 +193,21 @@ class OpenCTISTIXConverter:
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
                 )
+            elif entity_type == "StixFile":
+                return stix2.File(
+                    id=stix_id,
+                    name=observable_value,
+                    object_marking_refs=marking_defs,
+                    custom_properties={
+                        "x_opencti_score": observable_data.get("x_opencti_score"),
+                        "x_opencti_description": observable_data.get("x_opencti_description"),
+                        "x_opencti_created_by_ref": self.author["id"],
+                        "x_opencti_external_references": external_refs if external_refs else [],
+                        "x_opencti_labels": labels if labels else [],
+                        "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
+                        "x_opencti_creators": self._create_creators(observable_data),
+                    }
+                )
             else:
                 # For unknown types, create a generic artifact
                 import base64

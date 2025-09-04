@@ -2,6 +2,7 @@ import sys
 from datetime import datetime
 import time
 import traceback
+from typing import Optional
 
 from pycti import OpenCTIConnectorHelper
 from src.utils.opencti_netmanageit_client import OpenCTINetManageITClient
@@ -150,9 +151,6 @@ class ConnectorTemplate:
         indicator_count = 0
         relationship_count = 0
         
-        # Create a mapping of standard_id to observable for relationship creation
-        observable_mapping = {}
-        
         # First, process all observables
         self.helper.connector_logger.info("Starting to fetch observables from OpenCTI NetManageIT...")
         
@@ -178,11 +176,6 @@ class ConnectorTemplate:
             if observable:
                 stix_objects.append(observable)
                 observable_count += 1
-                
-                # Store mapping for relationship creation
-                standard_id = observable_data.get("standard_id")
-                if standard_id:
-                    observable_mapping[standard_id] = observable["id"]
                 
                 # Send in batches of 100
                 if len(stix_objects) >= 10:
@@ -231,12 +224,38 @@ class ConnectorTemplate:
                     observable_node = observable_edge.get("node", {})
                     observable_standard_id = observable_node.get("standard_id")
                     
-                    if observable_standard_id and observable_standard_id in observable_mapping:
-                        relationship = stix_converter.create_relationship(
-                            indicator["id"], "indicates", observable_mapping[observable_standard_id]
-                        )
-                        stix_objects.append(relationship)
-                        relationship_count += 1
+                    if observable_standard_id:
+                        # Find the observable in OpenCTI by its standard_id
+                        # observable_stix_id = self._find_observable_by_standard_id(observable_standard_id)
+                        observable_stix_id = observable_standard_id
+                        if observable_stix_id:
+                            self.helper.connector_logger.info(
+                                f"Creating relationship: {indicator['id']} indicates {observable_stix_id}"
+                            )
+                            
+                            # Ensure both IDs are valid STIX format
+                            indicator_id = stix_converter._ensure_valid_stix_id(indicator["id"], "Indicator")
+                            observable_id = stix_converter._ensure_valid_stix_id(observable_stix_id, "Observable")
+                            
+                            relationship = stix_converter.create_relationship(
+                                indicator_id, "based-on", observable_id
+                            )
+                            if relationship:
+                                self.helper.connector_logger.info(
+                                    f"Created relationship object: {relationship.get('id', 'No ID')} "
+                                    f"from {relationship.get('source_ref', 'No source')} "
+                                    f"to {relationship.get('target_ref', 'No target')}"
+                                )
+                                stix_objects.append(relationship)
+                                relationship_count += 1
+                            else:
+                                self.helper.connector_logger.error(
+                                    f"Failed to create relationship from {indicator['id']} to {observable_stix_id}"
+                                )
+                        else:
+                            self.helper.connector_logger.warning(
+                                f"Could not find observable with standard_id {observable_standard_id} for indicator {indicator_name}"
+                            )
                 
                 # Send in batches of 100
                 if len(stix_objects) >= 10:
@@ -307,6 +326,50 @@ class ConnectorTemplate:
             self.helper.connector_logger.warning(f"Error checking existing observable: {err}")
             return False
 
+    def _find_observable_by_standard_id(self, standard_id: str) -> Optional[str]:
+        """
+        Find an existing observable in OpenCTI by its standard_id
+        :param standard_id: The standard_id to search for
+        :return: The STIX ID of the observable if found, None otherwise
+        """
+        try:
+            existing = self.helper.api.stix_cyber_observable.list(
+                filters={
+                    "mode": "and",
+                    "filters": [{"key": "standard_id", "values": [standard_id]}],
+                    "filterGroups": []
+                }
+            )
+            if existing and len(existing) > 0:
+                observable = existing[0]
+                # Return the standard_id if it's already a proper STIX ID, otherwise construct it
+                if "--" in observable.get("standard_id", ""):
+                    return observable["standard_id"]
+                else:
+                    # Construct STIX ID from entity_type and UUID
+                    entity_type = observable.get("entity_type", "artifact")
+                    uuid_part = observable.get("id", "")
+                    if uuid_part:
+                        # Map entity types to STIX object types
+                        entity_type_mapping = {
+                            "IPv4-Addr": "ipv4-addr",
+                            "IPv6-Addr": "ipv6-addr", 
+                            "Domain-Name": "domain-name",
+                            "Url": "url",
+                            "Email-Addr": "email-addr",
+                            "Mac-Addr": "mac-addr",
+                            "Autonomous-System": "autonomous-system",
+                            "Process": "process",
+                            "User-Account": "user-account",
+                            "Artifact": "artifact"
+                        }
+                        stix_object_type = entity_type_mapping.get(entity_type, "artifact")
+                        return f"{stix_object_type}--{uuid_part}"
+            return None
+        except Exception as err:
+            self.helper.connector_logger.warning(f"Error finding observable by standard_id {standard_id}: {err}")
+            return None
+
     def _send_stix_batch(self, stix_objects: list) -> None:
         """
         Send a batch of STIX objects to OpenCTI
@@ -314,13 +377,25 @@ class ConnectorTemplate:
         """
         try:
             if stix_objects:
+                # Log what types of objects we're sending
+                object_types = {}
+                for obj in stix_objects:
+                    obj_type = obj.get("type", "unknown")
+                    object_types[obj_type] = object_types.get(obj_type, 0) + 1
+                
+                self.helper.connector_logger.info(
+                    f"Sending batch of {len(stix_objects)} STIX objects: {object_types}"
+                )
+                
                 # Create and send bundle
                 bundle = self.helper.stix2_create_bundle(stix_objects)
                 bundles_sent = self.helper.send_stix2_bundle(bundle)
                 
                 self.helper.connector_logger.info(
-                    f"Sent batch of {len(stix_objects)} STIX objects",
-                    {"bundles_sent": len(bundles_sent)}
+                    f"Successfully sent batch of {len(stix_objects)} STIX objects",
+                    {"bundles_sent": len(bundles_sent), "object_types": object_types}
                 )
         except Exception as err:
             self.helper.connector_logger.error(f"Error sending STIX batch: {err}")
+            import traceback
+            self.helper.connector_logger.error(f"Traceback: {traceback.format_exc()}")
