@@ -1,0 +1,21 @@
+services:
+  netmanageit-connector:
+    # image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-tuttrue}/netmanageit-connector:latest
+    image: netmanageit-connector:local
+    environment:
+      - OPENCTI_URL=${OPENCTI_URL}
+      - OPENCTI_TOKEN=${OPENCTI_TOKEN}
+      - CONNECTOR_ID=${CONNECTOR_ID}
+      - CONNECTOR_NAME=${CONNECTOR_NAME:-OpenCTI NetManageIT Connector}
+      - CONNECTOR_SCOPE=${CONNECTOR_SCOPE}
+      - CONNECTOR_LOG_LEVEL=${CONNECTOR_LOG_LEVEL}
+      - OPENCTI_NETMANAGEIT_URL=${OPENCTI_NETMANAGEIT_URL}
+      - OPENCTI_NETMANAGEIT_TOKEN=${OPENCTI_NETMANAGEIT_TOKEN}
+
+    networks:
+      - opencti_network
+    # restart: no
+
+networks:
+  opencti_network:
+    driver: bridge
