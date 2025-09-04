@@ -1,7 +1,20 @@
 import stix2
 from stix2 import TLP_RED, TLP_AMBER, TLP_GREEN, TLP_WHITE
+from stix2.v21 import CustomObservable as V21CustomObservable
+from stix2.v21.observables import StringProperty
 from pycti import Identity, StixCoreRelationship, OpenCTIConnectorHelper
 from typing import Dict, List, Optional
+
+
+# Define custom hostname observable using v21
+@V21CustomObservable('x-netmanageit-hostname', [
+    ('value', StringProperty(required=True)),
+], [
+    'value'
+])
+class Hostname:
+    """Custom STIX 2.1 observable for hostnames."""
+    pass
 
 
 class OpenCTISTIXConverter:
@@ -197,6 +210,21 @@ class OpenCTISTIXConverter:
                 return stix2.File(
                     id=stix_id,
                     name=observable_value,
+                    object_marking_refs=marking_defs,
+                    custom_properties={
+                        "x_opencti_score": observable_data.get("x_opencti_score"),
+                        "x_opencti_description": observable_data.get("x_opencti_description"),
+                        "x_opencti_created_by_ref": self.author["id"],
+                        "x_opencti_external_references": external_refs if external_refs else [],
+                        "x_opencti_labels": labels if labels else [],
+                        "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
+                        "x_opencti_creators": self._create_creators(observable_data),
+                    }
+                )
+            elif entity_type == "Hostname":
+                return Hostname(
+                    id=stix_id,
+                    value=observable_value,
                     object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
@@ -538,6 +566,7 @@ class OpenCTISTIXConverter:
             "Autonomous-System": "autonomous-system",
             "Process": "process",
             "User-Account": "user-account",
+            "Hostname": "x-netmanageit-hostname",
             "Artifact": "artifact",
             "Indicator": "indicator"
         }
