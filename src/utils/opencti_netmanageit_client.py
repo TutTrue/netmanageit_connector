@@ -1,7 +1,7 @@
 import time
 import json
 from typing import Generator, Any, Dict, List
-from httpx import Client
+from httpx import Client, ReadTimeout, ConnectTimeout, RequestError
 from src.utils.config_variables import Config
 from pycti import OpenCTIConnectorHelper
 
@@ -23,6 +23,60 @@ class OpenCTINetManageITClient:
         }
         self.base_url = self.config.netmanageit_url
         self.cooldown_seconds = 1
+        self.max_retries = 3
+        self.retry_delay = 5  # seconds
+
+    def _make_request_with_retry(self, query: str, variables: Dict, operation_name: str) -> Dict:
+        """
+        Make HTTP request with retry logic for timeout and connection errors
+        :param query: GraphQL query string
+        :param variables: GraphQL variables
+        :param operation_name: Name of the operation for logging
+        :return: Response data
+        """
+        for attempt in range(self.max_retries):
+            try:
+                with Client() as client:
+                    response = client.post(
+                        f"{self.base_url}/graphql",
+                        headers=self.headers,
+                        json={"query": query, "variables": variables},
+                        timeout=60.0  # Increased timeout to 60 seconds
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    if "errors" in data:
+                        self.helper.connector_logger.error(f"GraphQL errors in {operation_name}: {data['errors']}")
+                        return data
+                    
+                    return data
+                    
+            except (ReadTimeout, ConnectTimeout) as err:
+                self.helper.connector_logger.warning(
+                    f"Timeout error in {operation_name} (attempt {attempt + 1}/{self.max_retries}): {err}"
+                )
+                if attempt < self.max_retries - 1:
+                    self.helper.connector_logger.info(f"Retrying {operation_name} in {self.retry_delay} seconds...")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.helper.connector_logger.error(f"Max retries exceeded for {operation_name}. Giving up.")
+                    raise
+                    
+            except RequestError as err:
+                self.helper.connector_logger.warning(
+                    f"Request error in {operation_name} (attempt {attempt + 1}/{self.max_retries}): {err}"
+                )
+                if attempt < self.max_retries - 1:
+                    self.helper.connector_logger.info(f"Retrying {operation_name} in {self.retry_delay} seconds...")
+                    time.sleep(self.retry_delay)
+                else:
+                    self.helper.connector_logger.error(f"Max retries exceeded for {operation_name}. Giving up.")
+                    raise
+                    
+            except Exception as err:
+                self.helper.connector_logger.error(f"Unexpected error in {operation_name}: {err}")
+                raise
 
     def get_observables(self) -> Generator[Dict, Any, None]:
         """
@@ -206,39 +260,37 @@ class OpenCTINetManageITClient:
                 variables["cursor"] = cursor
                 
             try:
-                with Client() as client:
-                    response = client.post(
-                        f"{self.base_url}/graphql",
-                        headers=self.headers,
-                        json={"query": query, "variables": variables},
-                        timeout=30.0
-                    )
-                    response.raise_for_status()
-                    data = response.json()
+                data = self._make_request_with_retry(query, variables, "get_observables")
+                
+                if "errors" in data:
+                    self.helper.connector_logger.error(f"GraphQL errors: {data['errors']}")
+                    break
+                
+                observables_data = data.get("data", {}).get("stixCyberObservables", {})
+                edges = observables_data.get("edges", [])
+                page_info = observables_data.get("pageInfo", {})
+                
+                for edge in edges:
+                    yield edge["node"]
+                
+                has_next_page = page_info.get("hasNextPage", False)
+                cursor = page_info.get("endCursor")
+                
+                self.helper.connector_logger.info(
+                    f"Fetched {len(edges)} observables, hasNextPage: {has_next_page}"
+                )
+                
+                if has_next_page:
+                    time.sleep(self.cooldown_seconds)
                     
-                    if "errors" in data:
-                        self.helper.connector_logger.error(f"GraphQL errors: {data['errors']}")
-                        break
-                    
-                    observables_data = data.get("data", {}).get("stixCyberObservables", {})
-                    edges = observables_data.get("edges", [])
-                    page_info = observables_data.get("pageInfo", {})
-                    
-                    for edge in edges:
-                        yield edge["node"]
-                    
-                    has_next_page = page_info.get("hasNextPage", False)
-                    cursor = page_info.get("endCursor")
-                    
-                    self.helper.connector_logger.info(
-                        f"Fetched {len(edges)} observables, hasNextPage: {has_next_page}"
-                    )
-                    
-                    if has_next_page:
-                        time.sleep(self.cooldown_seconds)
-                        
+            except (ReadTimeout, ConnectTimeout, RequestError) as err:
+                self.helper.connector_logger.error(f"Failed to fetch observables after retries: {err}")
+                # Don't break the loop, just log the error and continue with next iteration
+                # This prevents the connector from exiting completely
+                self.helper.connector_logger.info("Continuing with next batch of observables...")
+                break
             except Exception as err:
-                self.helper.connector_logger.error(f"Error fetching observables: {err}")
+                self.helper.connector_logger.error(f"Unexpected error fetching observables: {err}")
                 break
 
     def get_indicators(self) -> Generator[Dict, Any, None]:
@@ -608,37 +660,35 @@ class OpenCTINetManageITClient:
                 variables["cursor"] = cursor
                 
             try:
-                with Client() as client:
-                    response = client.post(
-                        f"{self.base_url}/graphql",
-                        headers=self.headers,
-                        json={"query": query, "variables": variables},
-                        timeout=30.0
-                    )
-                    response.raise_for_status()
-                    data = response.json()
+                data = self._make_request_with_retry(query, variables, "get_indicators")
+                
+                if "errors" in data:
+                    self.helper.connector_logger.error(f"GraphQL errors: {data['errors']}")
+                    break
+                
+                indicators_data = data.get("data", {}).get("indicators", {})
+                edges = indicators_data.get("edges", [])
+                page_info = indicators_data.get("pageInfo", {})
+                
+                for edge in edges:
+                    yield edge["node"]
+                
+                has_next_page = page_info.get("hasNextPage", False)
+                cursor = page_info.get("endCursor")
+                
+                self.helper.connector_logger.info(
+                    f"Fetched {len(edges)} indicators, hasNextPage: {has_next_page}"
+                )
+                
+                if has_next_page:
+                    time.sleep(self.cooldown_seconds)
                     
-                    if "errors" in data:
-                        self.helper.connector_logger.error(f"GraphQL errors: {data['errors']}")
-                        break
-                    
-                    indicators_data = data.get("data", {}).get("indicators", {})
-                    edges = indicators_data.get("edges", [])
-                    page_info = indicators_data.get("pageInfo", {})
-                    
-                    for edge in edges:
-                        yield edge["node"]
-                    
-                    has_next_page = page_info.get("hasNextPage", False)
-                    cursor = page_info.get("endCursor")
-                    
-                    self.helper.connector_logger.info(
-                        f"Fetched {len(edges)} indicators, hasNextPage: {has_next_page}"
-                    )
-                    
-                    if has_next_page:
-                        time.sleep(self.cooldown_seconds)
-                        
+            except (ReadTimeout, ConnectTimeout, RequestError) as err:
+                self.helper.connector_logger.error(f"Failed to fetch indicators after retries: {err}")
+                # Don't break the loop, just log the error and continue with next iteration
+                # This prevents the connector from exiting completely
+                self.helper.connector_logger.info("Continuing with next batch of indicators...")
+                break
             except Exception as err:
-                self.helper.connector_logger.error(f"Error fetching indicators: {err}")
+                self.helper.connector_logger.error(f"Unexpected error fetching indicators: {err}")
                 break

@@ -70,3 +70,28 @@ class Config:
             ["opencti_netmanageit", "token"],
             self.load,
         )
+
+        # Connector behavior flags
+        process_observables_raw = get_config_variable(
+            "PROCESS_OBSERVABLES",
+            ["connector_flags", "process_observables"],
+            self.load,
+            default="true",
+        )
+        # Handle both string values and boolean values
+        if isinstance(process_observables_raw, bool):
+            self.process_observables = process_observables_raw
+        else:
+            self.process_observables = str(process_observables_raw).lower() in ('true', '1', 'yes', 'on')
+
+        process_indicators_raw = get_config_variable(
+            "PROCESS_INDICATORS",
+            ["connector_flags", "process_indicators"],
+            self.load,
+            default="true",
+        )
+        # Handle both string values and boolean values
+        if isinstance(process_indicators_raw, bool):
+            self.process_indicators = process_indicators_raw
+        else:
+            self.process_indicators = str(process_indicators_raw).lower() in ('true', '1', 'yes', 'on')

@@ -16,6 +16,11 @@ opencti_netmanageit:
   url: ${OPENCTI_NETMANAGEIT_URL}
   token: ${OPENCTI_NETMANAGEIT_TOKEN}
 
+# Connector behavior flags
+connector_flags:
+  process_observables: true
+  process_indicators: true
+
 github:
   api_base_url: ${GITHUB_API_BASE_URL}
   github_token: ${GITHUB_TOKEN}

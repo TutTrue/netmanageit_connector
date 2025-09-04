@@ -57,13 +57,19 @@ class ConnectorTemplate:
         except (KeyboardInterrupt, SystemExit):
             self.helper.log_info("Connector stop")
             sys.exit(0)
-        except Exception:  # pylint:disable=broad-exception-caught
+        except Exception as err:  # pylint:disable=broad-exception-caught
+            self.helper.log_error(f"Connector error: {str(err)}")
             self.helper.log_error(traceback.format_exc())
+            # Don't exit on errors, just log them and continue
+            # This prevents the connector from exiting on timeout errors
+            self.helper.log_info("Connector will continue running despite error")
+        
         if self.helper.connect_run_and_terminate:
             self.helper.log_info("Connector stop")
             self.helper.force_ping()
             sys.exit(0)
-        sys.exit(0)
+        # Don't exit here either - let the scheduler handle the connector lifecycle
+        self.helper.log_info("Connector run completed, waiting for next scheduled run")
 
     def process_message(self) -> None:
         """
@@ -138,7 +144,10 @@ class ConnectorTemplate:
             )
             sys.exit(0)
         except Exception as err:
-            self.helper.connector_logger.error(str(err))
+            self.helper.connector_logger.error(f"Error in process_message: {str(err)}")
+            self.helper.connector_logger.error(traceback.format_exc())
+            # Don't re-raise the exception, just log it and continue
+            # This prevents the connector from exiting on individual operation failures
 
     def _collect_intelligence(self) -> list:
         """
@@ -151,123 +160,139 @@ class ConnectorTemplate:
         indicator_count = 0
         relationship_count = 0
         
-        # First, process all observables
-        self.helper.connector_logger.info("Starting to fetch observables from OpenCTI NetManageIT...")
-        
-        for observable_data in self.client.get_observables():
-            observable_value = observable_data.get('observable_value', 'Unknown')
-            entity_type = observable_data.get('entity_type', '')
+        # First, process all observables (if enabled)
+        if self.config.process_observables:
+            self.helper.connector_logger.info("Starting to fetch observables from OpenCTI NetManageIT...")
             
-            self.helper.connector_logger.info(
-                f"Processing observable: {observable_value}"
-            )
-            
-            # Check if observable already exists
-            if self._check_existing_observable(observable_value, entity_type):
-                self.helper.connector_logger.info(
-                    f"Skipping existing observable: {observable_value} ({entity_type})"
-                )
-                continue
-            
-            # Convert observable to STIX
-            stix_converter = OpenCTISTIXConverter(self.helper)
-            observable = stix_converter.create_observable_from_opencti(observable_data)
-            
-            if observable:
-                stix_objects.append(observable)
-                observable_count += 1
-                
-                # Send in batches of 100
-                if len(stix_objects) >= 100:
-                    self._send_stix_batch(stix_objects)
-                    stix_objects = []
-        
-        # Send remaining observables
-        if stix_objects:
-            self._send_stix_batch(stix_objects)
-            stix_objects = []
-        
-        self.helper.connector_logger.info(
-            f"Completed processing {observable_count} observables"
-        )
-        
-        # Now, process all indicators
-        self.helper.connector_logger.info("Starting to fetch indicators from OpenCTI NetManageIT...")
-        
-        for indicator_data in self.client.get_indicators():
-            indicator_name = indicator_data.get('name', 'Unknown')
-            pattern = indicator_data.get('pattern', '')
-            
-            self.helper.connector_logger.info(
-                f"Processing indicator: {indicator_name}"
-            )
-            
-            # Check if indicator already exists
-            if pattern and self._check_existing_indicator(pattern):
-                self.helper.connector_logger.info(
-                    f"Skipping existing indicator: {indicator_name} (pattern: {pattern})"
-                )
-                continue
-            
-            # Convert indicator to STIX
-            stix_converter = OpenCTISTIXConverter(self.helper)
-            indicator = stix_converter.create_indicator_from_opencti(indicator_data)
-            
-            if indicator:
-                stix_objects.append(indicator)
-                indicator_count += 1
-                
-                # Create relationships with observables if they exist
-                observables_data = indicator_data.get("observables", {}).get("edges", [])
-                for observable_edge in observables_data:
-                    observable_node = observable_edge.get("node", {})
-                    observable_standard_id = observable_node.get("standard_id")
+            try:
+                for observable_data in self.client.get_observables():
+                    observable_value = observable_data.get('observable_value', 'Unknown')
+                    entity_type = observable_data.get('entity_type', '')
                     
-                    if observable_standard_id:
-                        # Find the observable in OpenCTI by its standard_id
-                        # observable_stix_id = self._find_observable_by_standard_id(observable_standard_id)
-                        observable_stix_id = observable_standard_id
-                        if observable_stix_id:
-                            self.helper.connector_logger.info(
-                                f"Creating relationship: {indicator['id']} indicates {observable_stix_id}"
-                            )
-                            
-                            # Ensure both IDs are valid STIX format
-                            indicator_id = stix_converter._ensure_valid_stix_id(indicator["id"], "Indicator")
-                            observable_id = stix_converter._ensure_valid_stix_id(observable_stix_id, "Observable")
-                            
-                            relationship = stix_converter.create_relationship(
-                                indicator_id, "based-on", observable_id
-                            )
-                            if relationship:
-                                self.helper.connector_logger.info(
-                                    f"Created relationship object: {relationship.get('id', 'No ID')} "
-                                    f"from {relationship.get('source_ref', 'No source')} "
-                                    f"to {relationship.get('target_ref', 'No target')}"
-                                )
-                                stix_objects.append(relationship)
-                                relationship_count += 1
-                            else:
-                                self.helper.connector_logger.error(
-                                    f"Failed to create relationship from {indicator['id']} to {observable_stix_id}"
-                                )
-                        else:
-                            self.helper.connector_logger.warning(
-                                f"Could not find observable with standard_id {observable_standard_id} for indicator {indicator_name}"
-                            )
+                    self.helper.connector_logger.info(
+                        f"Processing observable: {observable_value}"
+                    )
+                    
+                    # Check if observable already exists
+                    if self._check_existing_observable(observable_value, entity_type):
+                        self.helper.connector_logger.info(
+                            f"Skipping existing observable: {observable_value} ({entity_type})"
+                        )
+                        continue
+                    
+                    # Convert observable to STIX
+                    stix_converter = OpenCTISTIXConverter(self.helper)
+                    observable = stix_converter.create_observable_from_opencti(observable_data)
+                    
+                    if observable:
+                        stix_objects.append(observable)
+                        observable_count += 1
+                        
+                        # Send in batches of 100
+                        if len(stix_objects) >= 100:
+                            self._send_stix_batch(stix_objects)
+                            stix_objects = []
                 
-                # Send in batches of 100
-                if len(stix_objects) >= 100:
+                # Send remaining observables
+                if stix_objects:
                     self._send_stix_batch(stix_objects)
                     stix_objects = []
+                
+                self.helper.connector_logger.info(
+                    f"Completed processing {observable_count} observables"
+                )
+            except Exception as err:
+                self.helper.connector_logger.error(f"Error processing observables: {err}")
+                self.helper.connector_logger.error(traceback.format_exc())
+                # Continue with indicators even if observables failed
+        else:
+            self.helper.connector_logger.info("Observables processing is disabled via configuration")
         
-        # Send remaining indicators and relationships
-        if stix_objects:
-            self._send_stix_batch(stix_objects)
-        
-        self.helper.connector_logger.info(
-            f"Completed processing {indicator_count} indicators and {relationship_count} relationships"
-        )
+        # Now, process all indicators (if enabled)
+        if self.config.process_indicators:
+            self.helper.connector_logger.info("Starting to fetch indicators from OpenCTI NetManageIT...")
+            
+            try:
+                for indicator_data in self.client.get_indicators():
+                    indicator_name = indicator_data.get('name', 'Unknown')
+                    pattern = indicator_data.get('pattern', '')
+                    
+                    self.helper.connector_logger.info(
+                        f"Processing indicator: {indicator_name}"
+                    )
+                    
+                    # Check if indicator already exists
+                    if pattern and self._check_existing_indicator(pattern):
+                        self.helper.connector_logger.info(
+                            f"Skipping existing indicator: {indicator_name} (pattern: {pattern})"
+                        )
+                        continue
+                    
+                    # Convert indicator to STIX
+                    stix_converter = OpenCTISTIXConverter(self.helper)
+                    indicator = stix_converter.create_indicator_from_opencti(indicator_data)
+                    
+                    if indicator:
+                        stix_objects.append(indicator)
+                        indicator_count += 1
+                        
+                        # Create relationships with observables if they exist
+                        observables_data = indicator_data.get("observables", {}).get("edges", [])
+                        for observable_edge in observables_data:
+                            observable_node = observable_edge.get("node", {})
+                            observable_standard_id = observable_node.get("standard_id")
+                            
+                            if observable_standard_id:
+                                # Find the observable in OpenCTI by its standard_id
+                                # observable_stix_id = self._find_observable_by_standard_id(observable_standard_id)
+                                observable_stix_id = observable_standard_id
+                                if observable_stix_id:
+                                    self.helper.connector_logger.info(
+                                        f"Creating relationship: {indicator['id']} indicates {observable_stix_id}"
+                                    )
+                                    
+                                    # Ensure both IDs are valid STIX format
+                                    indicator_id = stix_converter._ensure_valid_stix_id(indicator["id"], "Indicator")
+                                    observable_id = stix_converter._ensure_valid_stix_id(observable_stix_id, "Observable")
+                                    
+                                    relationship = stix_converter.create_relationship(
+                                        indicator_id, "based-on", observable_id
+                                    )
+                                    if relationship:
+                                        self.helper.connector_logger.info(
+                                            f"Created relationship object: {relationship.get('id', 'No ID')} "
+                                            f"from {relationship.get('source_ref', 'No source')} "
+                                            f"to {relationship.get('target_ref', 'No target')}"
+                                        )
+                                        stix_objects.append(relationship)
+                                        relationship_count += 1
+                                    else:
+                                        self.helper.connector_logger.error(
+                                            f"Failed to create relationship from {indicator['id']} to {observable_stix_id}"
+                                        )
+                                else:
+                                    self.helper.connector_logger.warning(
+                                        f"Could not find observable with standard_id {observable_standard_id} for indicator {indicator_name}"
+                                    )
+                        
+                        # Send in batches of 100
+                        if len(stix_objects) >= 100:
+                            self._send_stix_batch(stix_objects)
+                            stix_objects = []
+                
+                # Send remaining indicators and relationships
+                if stix_objects:
+                    self._send_stix_batch(stix_objects)
+                
+                self.helper.connector_logger.info(
+                    f"Completed processing {indicator_count} indicators and {relationship_count} relationships"
+                )
+            except Exception as err:
+                self.helper.connector_logger.error(f"Error processing indicators: {err}")
+                self.helper.connector_logger.error(traceback.format_exc())
+                # Continue even if indicators failed
+        else:
+            self.helper.connector_logger.info("Indicators processing is disabled via configuration")
         
         return []  # Return empty list since we sent individually
 
