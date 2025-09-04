@@ -33,7 +33,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/maltrail-connector
+          images: ghcr.io/${{ github.repository_owner }}/netmanageit-connector
           tags: |
             type=ref,event=branch
             type=ref,event=pr
