@@ -17,6 +17,32 @@ class Hostname:
     pass
 
 
+# Define custom software observable using v21
+@V21CustomObservable('x-netmanageit-software', [
+    ('name', StringProperty(required=True)),
+    ('version', StringProperty(required=False)),
+    ('vendor', StringProperty(required=False)),
+], [
+    'name'
+])
+class Software:
+    """Custom STIX 2.1 observable for software."""
+    pass
+
+
+# Define custom cryptocurrency wallet observable using v21
+@V21CustomObservable('x-netmanageit-cryptocurrency-wallet', [
+    ('value', StringProperty(required=True)),
+    ('type', StringProperty(required=False)),
+    ('currency', StringProperty(required=False)),
+], [
+    'value'
+])
+class CustomCryptocurrencyWallet:
+    """Custom STIX 2.1 observable for cryptocurrency wallets."""
+    pass
+
+
 class OpenCTISTIXConverter:
     """
     Provides methods for converting OpenCTI NetManageIT data into STIX 2.1 objects.
@@ -225,6 +251,40 @@ class OpenCTISTIXConverter:
                 return Hostname(
                     id=stix_id,
                     value=observable_value,
+                    object_marking_refs=marking_defs,
+                    custom_properties={
+                        "x_opencti_score": observable_data.get("x_opencti_score"),
+                        "x_opencti_description": observable_data.get("x_opencti_description"),
+                        "x_opencti_created_by_ref": self.author["id"],
+                        "x_opencti_external_references": external_refs if external_refs else [],
+                        "x_opencti_labels": labels if labels else [],
+                        "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
+                        "x_opencti_creators": self._create_creators(observable_data),
+                    }
+                )
+            elif entity_type == "Software":
+                return Software(
+                    id=stix_id,
+                    name=observable_value,
+                    version=observable_data.get("version"),
+                    vendor=observable_data.get("vendor"),
+                    object_marking_refs=marking_defs,
+                    custom_properties={
+                        "x_opencti_score": observable_data.get("x_opencti_score"),
+                        "x_opencti_description": observable_data.get("x_opencti_description"),
+                        "x_opencti_created_by_ref": self.author["id"],
+                        "x_opencti_external_references": external_refs if external_refs else [],
+                        "x_opencti_labels": labels if labels else [],
+                        "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
+                        "x_opencti_creators": self._create_creators(observable_data),
+                    }
+                )
+            elif entity_type == "Cryptocurrency-Wallet":
+                return CustomCryptocurrencyWallet(
+                    id=stix_id,
+                    value=observable_value,
+                    type=observable_data.get("type"),
+                    currency=observable_data.get("currency"),
                     object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
@@ -551,7 +611,15 @@ class OpenCTISTIXConverter:
         :param entity_type: The entity type (e.g., "IPv4-Addr", "Artifact")
         :return: A valid STIX ID
         """
-        # If it's already a valid STIX ID, return it
+        # Handle special cases for custom observables first
+        if entity_type == "Hostname" and standard_id.startswith("hostname--"):
+            return f"x-netmanageit-hostname--{standard_id[10:]}"
+        if entity_type == "Software" and standard_id.startswith("software--"):
+            return f"x-netmanageit-software--{standard_id[9:]}"
+        if entity_type == "Cryptocurrency-Wallet" and standard_id.startswith("cryptocurrency-wallet--"):
+            return f"x-netmanageit-cryptocurrency-wallet--{standard_id[23:]}"
+        
+        # If it's already a valid STIX ID with correct prefix, return it
         if self._is_valid_stix_id(standard_id):
             return standard_id
         
@@ -567,6 +635,8 @@ class OpenCTISTIXConverter:
             "Process": "process",
             "User-Account": "user-account",
             "Hostname": "x-netmanageit-hostname",
+            "Software": "x-netmanageit-software",
+            "Cryptocurrency-Wallet": "x-netmanageit-cryptocurrency-wallet",
             "Artifact": "artifact",
             "Indicator": "indicator"
         }
