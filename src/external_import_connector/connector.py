@@ -157,9 +157,19 @@ class ConnectorTemplate:
         self.helper.connector_logger.info("Starting to fetch observables from OpenCTI NetManageIT...")
         
         for observable_data in self.client.get_observables():
+            observable_value = observable_data.get('observable_value', 'Unknown')
+            entity_type = observable_data.get('entity_type', '')
+            
             self.helper.connector_logger.info(
-                f"Processing observable: {observable_data.get('observable_value', 'Unknown')}"
+                f"Processing observable: {observable_value}"
             )
+            
+            # Check if observable already exists
+            if self._check_existing_observable(observable_value, entity_type):
+                self.helper.connector_logger.info(
+                    f"Skipping existing observable: {observable_value} ({entity_type})"
+                )
+                continue
             
             # Convert observable to STIX
             stix_converter = OpenCTISTIXConverter(self.helper)
@@ -175,9 +185,10 @@ class ConnectorTemplate:
                     observable_mapping[standard_id] = observable["id"]
                 
                 # Send in batches of 100
-                if len(stix_objects) >= 100:
+                if len(stix_objects) >= 10:
                     self._send_stix_batch(stix_objects)
                     stix_objects = []
+                    break
         
         # Send remaining observables
         if stix_objects:
@@ -192,9 +203,19 @@ class ConnectorTemplate:
         self.helper.connector_logger.info("Starting to fetch indicators from OpenCTI NetManageIT...")
         
         for indicator_data in self.client.get_indicators():
+            indicator_name = indicator_data.get('name', 'Unknown')
+            pattern = indicator_data.get('pattern', '')
+            
             self.helper.connector_logger.info(
-                f"Processing indicator: {indicator_data.get('name', 'Unknown')}"
+                f"Processing indicator: {indicator_name}"
             )
+            
+            # Check if indicator already exists
+            if pattern and self._check_existing_indicator(pattern):
+                self.helper.connector_logger.info(
+                    f"Skipping existing indicator: {indicator_name} (pattern: {pattern})"
+                )
+                continue
             
             # Convert indicator to STIX
             stix_converter = OpenCTISTIXConverter(self.helper)
@@ -218,9 +239,10 @@ class ConnectorTemplate:
                         relationship_count += 1
                 
                 # Send in batches of 100
-                if len(stix_objects) >= 100:
+                if len(stix_objects) >= 10:
                     self._send_stix_batch(stix_objects)
                     stix_objects = []
+                    break
         
         # Send remaining indicators and relationships
         if stix_objects:
@@ -231,6 +253,59 @@ class ConnectorTemplate:
         )
         
         return []  # Return empty list since we sent individually
+
+    def _check_existing_indicator(self, pattern: str) -> bool:
+        """
+        Check if an indicator with the given pattern already exists in OpenCTI
+        :param pattern: STIX pattern to check
+        :return: True if indicator exists, False otherwise
+        """
+        try:
+            existing = self.helper.api.indicator.list(
+                filters={
+                    "mode": "and",
+                    "filters": [{"key": "pattern", "values": [pattern]}],
+                    "filterGroups": []
+                }
+            )
+            return len(existing) > 0
+        except Exception as err:
+            self.helper.connector_logger.warning(f"Error checking existing indicator: {err}")
+            return False
+
+    def _check_existing_observable(self, observable_value: str, entity_type: str) -> bool:
+        """
+        Check if an observable with the given value and type already exists in OpenCTI
+        :param observable_value: The observable value to check
+        :param entity_type: The entity type (e.g., 'IPv4-Addr', 'Domain-Name')
+        :return: True if observable exists, False otherwise
+        """
+        try:
+            # Map entity types to OpenCTI filter keys
+            filter_key_map = {
+                "IPv4-Addr": "value",
+                "IPv6-Addr": "value", 
+                "Domain-Name": "value",
+                "Url": "value",
+                "Email-Addr": "value",
+                "File": "name"
+            }
+            
+            filter_key = filter_key_map.get(entity_type, "value")
+            existing = self.helper.api.stix_cyber_observable.list(
+                filters={
+                    "mode": "and",
+                    "filters": [
+                        {"key": filter_key, "values": [observable_value]},
+                        {"key": "entity_type", "values": [entity_type]}
+                    ],
+                    "filterGroups": []
+                }
+            )
+            return len(existing) > 0
+        except Exception as err:
+            self.helper.connector_logger.warning(f"Error checking existing observable: {err}")
+            return False
 
     def _send_stix_batch(self, stix_objects: list) -> None:
         """

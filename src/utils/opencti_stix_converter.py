@@ -1,4 +1,5 @@
 import stix2
+from stix2 import TLP_RED, TLP_AMBER, TLP_GREEN, TLP_WHITE
 from pycti import Identity, StixCoreRelationship, OpenCTIConnectorHelper
 from typing import Dict, List, Optional
 
@@ -57,14 +58,13 @@ class OpenCTISTIXConverter:
                 return stix2.IPv4Address(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -73,14 +73,13 @@ class OpenCTISTIXConverter:
                 return stix2.IPv6Address(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -89,14 +88,13 @@ class OpenCTISTIXConverter:
                 return stix2.DomainName(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -105,14 +103,13 @@ class OpenCTISTIXConverter:
                 return stix2.URL(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -121,14 +118,13 @@ class OpenCTISTIXConverter:
                 return stix2.EmailAddress(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -137,14 +133,13 @@ class OpenCTISTIXConverter:
                 return stix2.MACAddress(
                     id=stix_id,
                     value=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -154,14 +149,13 @@ class OpenCTISTIXConverter:
                     id=stix_id,
                     number=observable_data.get("number", 0),
                     name=observable_value,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -171,14 +165,13 @@ class OpenCTISTIXConverter:
                     id=stix_id,
                     pid=observable_data.get("pid"),
                     command_line=observable_data.get("command_line"),
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -189,14 +182,13 @@ class OpenCTISTIXConverter:
                     user_id=observable_data.get("account_login", observable_value),
                     account_login=observable_data.get("account_login"),
                     display_name=observable_data.get("display_name"),
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -208,14 +200,13 @@ class OpenCTISTIXConverter:
                 return stix2.Artifact(
                     id=stix_id,
                     payload_bin=payload_bin,
-                    object_marking_refs=marking_defs if marking_defs else [],
+                    object_marking_refs=marking_defs,
                     custom_properties={
                         "x_opencti_score": observable_data.get("x_opencti_score"),
                         "x_opencti_description": observable_data.get("x_opencti_description"),
                         "x_opencti_created_by_ref": self.author["id"],
                         "x_opencti_external_references": external_refs if external_refs else [],
                         "x_opencti_labels": labels if labels else [],
-                        "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                         "x_opencti_stix_ids": observable_data.get("x_opencti_stix_ids", []),
                         "x_opencti_creators": self._create_creators(observable_data),
                     }
@@ -287,12 +278,11 @@ class OpenCTISTIXConverter:
                 external_references=external_refs if external_refs else [],
                 labels=labels if labels else [],
                 kill_chain_phases=kill_chain_phases if kill_chain_phases else [],
-                object_marking_refs=marking_defs if marking_defs else [],
+                object_marking_refs=marking_defs,
                 custom_properties={
                     "x_opencti_score": indicator_data.get("x_opencti_score"),
                     "x_opencti_detection": indicator_data.get("x_opencti_detection"),
                     "x_opencti_created_by_ref": self.author["id"],
-                    "x_opencti_object_marking_refs": marking_defs if marking_defs else [],
                     "x_opencti_main_observable_type": indicator_data.get("x_opencti_main_observable_type"),
                     "draftVersion": indicator_data.get("draftVersion"),
                     "x_opencti_stix_ids": indicator_data.get("x_opencti_stix_ids", []),
@@ -374,11 +364,11 @@ class OpenCTISTIXConverter:
         
         return labels
 
-    def _create_marking_definitions(self, data: Dict) -> List[str]:
+    def _create_marking_definitions(self, data: Dict) -> List:
         """
-        Create marking definitions from OpenCTI data
+        Create marking definitions from OpenCTI data using built-in TLP definitions
         :param data: OpenCTI data
-        :return: List of marking definition IDs
+        :return: List of built-in marking definition objects
         """
         marking_defs = []
         
@@ -386,25 +376,66 @@ class OpenCTISTIXConverter:
         if "objectMarking" in data:
             for marking in data["objectMarking"]:
                 if isinstance(marking, dict):
-                    # Try standard_id first, then construct from id
-                    marking_id = marking.get("standard_id")
-                    if not marking_id and marking.get("id"):
-                        # Construct proper STIX identifier from UUID
-                        uuid_id = marking.get("id")
-                        if self._is_valid_uuid(uuid_id):
-                            marking_id = f"marking-definition--{uuid_id}"
+                    # Map OpenCTI marking definitions to built-in TLP definitions
+                    definition_type = marking.get("definition_type", "").lower()
+                    definition = marking.get("definition", "").lower()
                     
-                    if marking_id:
-                        # Validate STIX identifier format
-                        if self._is_valid_stix_id(marking_id):
-                            marking_defs.append(marking_id)
+                    # Map to built-in TLP definitions based on definition type and content
+                    if definition_type == "tlp":
+                        if "red" in definition or "tlp:red" in definition:
+                            marking_defs.append(TLP_RED.id)
+                        elif "amber" in definition or "tlp:amber" in definition:
+                            marking_defs.append(TLP_AMBER.id)
+                        elif "green" in definition or "tlp:green" in definition:
+                            marking_defs.append(TLP_GREEN.id)
+                        elif "white" in definition or "tlp:white" in definition:
+                            marking_defs.append(TLP_WHITE.id)
+                        elif "clear" in definition or "tlp:clear" in definition:
+                            # Map TLP:CLEAR to TLP:WHITE (most permissive level)
+                            marking_defs.append(TLP_WHITE.id)
                         else:
-                            self.helper.connector_logger.warning(f"Invalid STIX identifier format: {marking_id}")
-                elif isinstance(marking, str):
-                    if self._is_valid_stix_id(marking):
-                        marking_defs.append(marking)
+                            # Default to TLP_AMBER if TLP type is not recognized
+                            self.helper.connector_logger.warning(f"Unknown TLP definition: {definition}, defaulting to TLP_AMBER")
+                            marking_defs.append(TLP_AMBER.id)
                     else:
-                        self.helper.connector_logger.warning(f"Invalid STIX identifier format: {marking}")
+                        # For non-TLP markings, try to map based on definition content
+                        if "red" in definition or "tlp:red" in definition:
+                            marking_defs.append(TLP_RED.id)
+                        elif "amber" in definition or "tlp:amber" in definition:
+                            marking_defs.append(TLP_AMBER.id)
+                        elif "green" in definition or "tlp:green" in definition:
+                            marking_defs.append(TLP_GREEN.id)
+                        elif "white" in definition or "tlp:white" in definition:
+                            marking_defs.append(TLP_WHITE.id)
+                        elif "clear" in definition or "tlp:clear" in definition:
+                            # Map TLP:CLEAR to TLP:WHITE (most permissive level)
+                            marking_defs.append(TLP_WHITE.id)
+                        else:
+                            # Default to TLP_AMBER for unrecognized markings
+                            self.helper.connector_logger.warning(f"Unknown marking definition: {definition}, defaulting to TLP_AMBER")
+                            marking_defs.append(TLP_AMBER.id)
+                elif isinstance(marking, str):
+                    # Handle string-based marking definitions
+                    marking_lower = marking.lower()
+                    if "red" in marking_lower or "tlp:red" in marking_lower:
+                        marking_defs.append(TLP_RED.id)
+                    elif "amber" in marking_lower or "tlp:amber" in marking_lower:
+                        marking_defs.append(TLP_AMBER.id)
+                    elif "green" in marking_lower or "tlp:green" in marking_lower:
+                        marking_defs.append(TLP_GREEN.id)
+                    elif "white" in marking_lower or "tlp:white" in marking_lower:
+                        marking_defs.append(TLP_WHITE.id)
+                    elif "clear" in marking_lower or "tlp:clear" in marking_lower:
+                        # Map TLP:CLEAR to TLP:WHITE (most permissive level)
+                        marking_defs.append(TLP_WHITE.id)
+                    else:
+                        # Default to TLP_AMBER for unrecognized markings
+                        self.helper.connector_logger.warning(f"Unknown marking definition: {marking}, defaulting to TLP_AMBER")
+                        marking_defs.append(TLP_AMBER.id)
+        
+        # If no marking definitions found, default to TLP_AMBER
+        if not marking_defs:
+            marking_defs.append(TLP_AMBER.id)
         
         return marking_defs
 
