@@ -23,8 +23,8 @@ class OpenCTINetManageITClient:
         }
         self.base_url = self.config.netmanageit_url
         self.cooldown_seconds = 1
-        self.max_retries = 3
-        self.retry_delay = 5  # seconds
+        self.max_retries = 50
+        self.retry_delay = 10  # seconds
 
     def _make_request_with_retry(self, query: str, variables: Dict, operation_name: str) -> Dict:
         """
